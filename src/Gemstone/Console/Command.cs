@@ -19,6 +19,8 @@
 //  08/27/2014 - J. Ritchie Carroll
 //       Generated original version of source code.
 //
+//  03/14/2024 - AJ Stadlin
+//       CustomProcessStartInfo and SafeDisposal added
 //******************************************************************************************************
 
 using System;
@@ -43,6 +45,7 @@ public static class Command
         private readonly StringBuilder m_standardOutput;
         private readonly StringBuilder m_standardError;
         private bool m_disposed;
+        private bool m_safeDisposal = false;
 
         #endregion
 
@@ -70,6 +73,21 @@ public static class Command
                     RedirectStandardError = true
                 } 
             };
+
+            // Use custom startup properties if defined
+            if (CustomProcessStartInfo != null)
+            {
+                if (CustomProcessStartInfo.FileName == string.Empty)
+                    CustomProcessStartInfo.FileName = fileName;
+
+                if (CustomProcessStartInfo.Arguments == string.Empty)
+                    CustomProcessStartInfo.Arguments = arguments;
+
+                m_process.StartInfo = CustomProcessStartInfo;
+            }
+
+            // When safe disposal is true, process.Close() and Kill() will be performed prior to process.Dispose()
+            m_safeDisposal = SafeDisposal;
 
             m_process.OutputDataReceived += m_process_OutputDataReceived;
             m_process.ErrorDataReceived += m_process_ErrorDataReceived;
@@ -143,6 +161,18 @@ public static class Command
 
                 m_process.OutputDataReceived -= m_process_OutputDataReceived;
                 m_process.ErrorDataReceived -= m_process_ErrorDataReceived;
+
+                if (m_safeDisposal)
+                {
+                    // Close the process if it has not yet exited
+                    if (!m_process.HasExited)
+                        m_process.Close();
+
+                    // Kill the process if it has exited but is a zombie
+                    if (m_process.HasExited)
+                        m_process.Kill();
+                }
+
                 m_process.Dispose();
             }
             finally
@@ -191,6 +221,28 @@ public static class Command
 
         #endregion
     }
+
+    /// <summary>
+    /// When Command.SafeDisposal is true, process.Close() and Kill() are performed prior to performing process.Dispose()
+    /// Set SafeDisposal before Creating or Executing the CommandProcess
+    /// SafeDisposal Default is false for backward compatibility
+    /// </summary>
+    public static bool SafeDisposal { get; set; } = false;
+
+    /// <summary>
+    /// Customizable Command.ProcessStartInfo to set prior to Creating or Executing the CommandProcess.
+    /// The original Process.StartInfo defaults are used when Command.CustomProcessStartInfo is null.
+    /// Command.CustomProcessStartInfo is null to be consistent with earlier implementations.
+    /// Example to create a Command.CustomProcessStartInfo with Gemstone default StartInfo but without creating a Window:
+    /// Gemstone.Console.Command.CustomProcessStartInfo = new()
+    /// {
+    ///     UseShellExecute = false,
+    ///     RedirectStandardError = true,
+    ///     RedirectStandardOutput = true,
+    ///     CreateNoWindow = true
+    /// };
+    /// </summary>
+    public static ProcessStartInfo? CustomProcessStartInfo { get; set; } = null;
 
     /// <summary>
     /// Executes a command line operation and returns its standard output and exit code or throws an exception with the standard error.
