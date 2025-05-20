@@ -60,7 +60,7 @@ public static class TypeExtensions
 {
     // Native data types that represent numbers
     private static readonly Type[] s_numericTypes =
-    {
+    [
         typeof(sbyte), 
         typeof(byte), 
         typeof(short), 
@@ -72,7 +72,7 @@ public static class TypeExtensions
         typeof(float), 
         typeof(double), 
         typeof(decimal)
-    };
+    ];
 
     private static readonly Regex s_validCSharpIdentifierRegex = new(@"[\p{Lu}\p{Ll}\p{Lt}\p{Lm}\p{Lo}\p{Nl}\p{Nd}\p{Pc}\p{Mn}\p{Mc}\p{Cf}]", RegexOptions.Compiled);
 
@@ -308,7 +308,7 @@ public static class TypeExtensions
     /// <returns>Public types that implement the specified <paramref name="type"/>.</returns>
     public static List<Type> LoadImplementations(this Type type, string binariesDirectory, bool excludeAbstractTypes, bool validateReferences = true)
     {
-        List<Type> types = new();
+        List<Type> types = [];
 
         // Use application install directory for application.
         if (string.IsNullOrEmpty(binariesDirectory))
@@ -351,8 +351,9 @@ public static class TypeExtensions
             }
             catch (Exception ex)
             {
-                // Absorb any exception thrown while processing the assembly.
-                LibraryEvents.OnSuppressedException(typeof(TypeExtensions), new Exception($"Type load exception: {ex.Message}", ex));
+                // Absorb any exception thrown while processing the assembly, ignoring bad image format exceptions.
+                if (ex is not BadImageFormatException)
+                    LibraryEvents.OnSuppressedException(typeof(TypeExtensions), new Exception($"Type load exception: {ex.Message}", ex));
             }
         }
 

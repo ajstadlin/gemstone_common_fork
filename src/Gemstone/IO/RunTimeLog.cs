@@ -81,7 +81,7 @@ public class RunTimeLog : ISupportLifecycle, IProvideStatus
 
     // Fields
     private readonly Timer m_flushTimer;
-    private readonly object m_readerWriterLock;
+    private readonly Lock m_readerWriterLock;
     private string m_fileName = default!;
     private DateTimeOffset m_startTime;
     private DateTimeOffset m_stopTime;
@@ -103,7 +103,7 @@ public class RunTimeLog : ISupportLifecycle, IProvideStatus
         };
 
         m_flushTimer.Elapsed += m_flushTimer_Elapsed;
-        m_readerWriterLock = new object();
+        m_readerWriterLock = new Lock();
     }
 
     /// <summary>
@@ -378,7 +378,7 @@ public class RunTimeLog : ISupportLifecycle, IProvideStatus
     {
         try
         {
-            if (!Monitor.TryEnter(m_readerWriterLock))
+            if (!m_readerWriterLock.TryEnter())
                 return;
 
             try
@@ -396,7 +396,7 @@ public class RunTimeLog : ISupportLifecycle, IProvideStatus
             }
             finally
             {
-                Monitor.Exit(m_readerWriterLock);
+                m_readerWriterLock.Exit();
             }
         }
         catch (Exception ex)

@@ -23,6 +23,7 @@
 
 using System;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Gemstone.EventHandlerExtensions;
 
@@ -43,6 +44,7 @@ using Gemstone.EventHandlerExtensions;
 [assembly: InternalsVisibleTo("Gemstone.Threading")]
 [assembly: InternalsVisibleTo("Gemstone.Timeseries")]
 [assembly: InternalsVisibleTo("Gemstone.Web")]
+[assembly: InternalsVisibleTo("SnapDB")]
 
 // ReSharper disable DelegateSubtraction
 
@@ -60,7 +62,8 @@ namespace Gemstone;
 public static class LibraryEvents
 {
     private static EventHandler<UnhandledExceptionEventArgs>? s_suppressedExceptionHandler;
-    private static readonly object s_suppressedExceptionLock = new();
+    private static readonly Lock s_suppressedExceptionLock = new();
+    private static int s_attached;
 
     static LibraryEvents()
     {
@@ -77,7 +80,8 @@ public static class LibraryEvents
     /// </remarks>
     public static void EnableUnobservedTaskExceptionHandling()
     {
-        TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
+        if (Interlocked.CompareExchange(ref s_attached, 1, 0) == 0)
+            TaskScheduler.UnobservedTaskException += TaskScheduler_UnobservedTaskException;
     }
 
     /// <summary>
@@ -86,7 +90,8 @@ public static class LibraryEvents
     /// </summary>
     public static void DisableUnobservedTaskExceptionHandling()
     {
-        TaskScheduler.UnobservedTaskException -= TaskScheduler_UnobservedTaskException;
+        if (Interlocked.CompareExchange(ref s_attached, 0, 1) == 1)
+            TaskScheduler.UnobservedTaskException -= TaskScheduler_UnobservedTaskException;
     }
 
     private static void TaskScheduler_UnobservedTaskException(object? sender, UnobservedTaskExceptionEventArgs e)
@@ -137,9 +142,7 @@ public static class LibraryEvents
         // Have to use custom exception handler here, default SafeInvoke handler already calls LibraryEvents.OnSuppressedException
         static void exceptionHandler(Exception ex, Delegate handler)
         {
-            throw new Exception(
-                $"Failed in {nameof(Gemstone)}.{nameof(LibraryEvents)}.{nameof(SuppressedException)} event handler \"{handler.GetHandlerName()}\": {ex.Message}",
-                ex);
+            throw new Exception($"Failed in {nameof(Gemstone)}.{nameof(LibraryEvents)}.{nameof(SuppressedException)} event handler \"{handler.GetHandlerName()}\": {ex.Message}", ex);
         }
 
         s_suppressedExceptionHandler.SafeInvoke(s_suppressedExceptionLock, exceptionHandler, sender, new UnhandledExceptionEventArgs(ex, false));

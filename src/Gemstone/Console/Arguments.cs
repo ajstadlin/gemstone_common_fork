@@ -104,7 +104,7 @@ public class Arguments : IEnumerable<KeyValuePair<string, string>>, ISerializabl
     /// <summary>
     /// Regular expression pattern for tokenizing a list of arguments.
     /// </summary>
-    public const string TokenRegex = @"(?:(?<Open>"")(?:[^\\""]*(?:\\.)*)*(?<Close-Open>"")(?(Open)(?!))|\S)+";
+    public const string TokenRegex = /* lang=regex */ @"(?:""(?:\\.|[^\\""])*""|\S)+";
 
     /// <summary>
     /// Default value for <see cref="OrderedArgID"/>.
@@ -176,7 +176,7 @@ public class Arguments : IEnumerable<KeyValuePair<string, string>>, ISerializabl
         string[] args = ParseCommand(m_commandLine);
 
         if (skipFirstArgument) 
-            args = args.Length > 1 ? args.Copy(1, args.Length - 1) : Array.Empty<string>();
+            args = args.Length > 1 ? args.Copy(1, args.Length - 1) : [];
 
         foreach (string arg in args)
         {
@@ -502,7 +502,7 @@ public class Arguments : IEnumerable<KeyValuePair<string, string>>, ISerializabl
     public static string[] ToArgs(string command)
     {
         string[] tokenCharacterPatterns =
-        {
+        [
             // Backslash followed by another character
             @"\\.",
 
@@ -521,7 +521,7 @@ public class Arguments : IEnumerable<KeyValuePair<string, string>>, ISerializabl
             // A single character that is not a
             // single quote, double quote, or whitespace
             @"[^'""\s]"
-        };
+        ];
 
         // Define the regular expression pattern to match tokens
         string pattern = $"(?<=^|\\s)({string.Join("|", tokenCharacterPatterns)})+(?=\\s|$)";

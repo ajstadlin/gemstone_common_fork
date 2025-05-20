@@ -90,10 +90,10 @@ public static class FilePath
     static FilePath()
     {
         char[] directorySeparatorChars =
-        {
+        [
             Path.DirectorySeparatorChar,
             Path.AltDirectorySeparatorChar
-        };
+        ];
 
         char[] encodedInvalidFileNameChars = Path.GetInvalidFileNameChars()
             .SelectMany(c => c.RegexEncode())
@@ -478,7 +478,7 @@ public static class FilePath
         try
         {
             IEnumerable<string> topDirectory = Directory.EnumerateDirectories(path, searchPattern, SearchOption.TopDirectoryOnly);
-            IEnumerable<string> recursive = Enumerable.Empty<string>();
+            IEnumerable<string> recursive = [];
 
             if (searchOption == SearchOption.AllDirectories)
             {
@@ -566,7 +566,7 @@ public static class FilePath
         try
         {
             IEnumerable<string> topDirectory = Directory.EnumerateFiles(path, searchPattern, SearchOption.TopDirectoryOnly);
-            IEnumerable<string> recursive = Enumerable.Empty<string>();
+            IEnumerable<string> recursive = [];
 
             if (searchOption == SearchOption.AllDirectories)
             {
@@ -644,7 +644,7 @@ public static class FilePath
         try
         {
             IEnumerable<DirectoryInfo> topDirectory = directory.EnumerateDirectories(searchPattern, SearchOption.TopDirectoryOnly);
-            IEnumerable<DirectoryInfo> recursive = Enumerable.Empty<DirectoryInfo>();
+            IEnumerable<DirectoryInfo> recursive = [];
 
             if (searchOption == SearchOption.AllDirectories)
             {
@@ -724,7 +724,7 @@ public static class FilePath
         try
         {
             IEnumerable<FileInfo> topDirectory = directory.EnumerateFiles(searchPattern, SearchOption.TopDirectoryOnly);
-            IEnumerable<FileInfo> recursive = Enumerable.Empty<FileInfo>();
+            IEnumerable<FileInfo> recursive = [];
 
             if (searchOption == SearchOption.AllDirectories)
             {
@@ -929,7 +929,7 @@ public static class FilePath
             if (i == 0 &&
                 Path.VolumeSeparatorChar != Path.DirectorySeparatorChar &&
                 Path.VolumeSeparatorChar != Path.AltDirectorySeparatorChar &&
-                fileParts[0].IndexOfAny(new[] { Path.VolumeSeparatorChar }) > 0)
+                fileParts[0].IndexOfAny([Path.VolumeSeparatorChar]) > 0)
             {
                 continue;
             }
@@ -947,7 +947,9 @@ public static class FilePath
     /// <returns>File name and extension if the file path has it; otherwise empty string.</returns>
     public static string GetFileName(string filePath)
     {
-        return Path.GetFileName(filePath);
+        // Test for case where there is no file name and valid path does not end in directory separator,
+        // Path.GetFileName will return the last path segment as the file name in this case
+        return Directory.Exists(filePath) ? string.Empty : Path.GetFileName(filePath);
     }
 
     /// <summary>
@@ -1025,16 +1027,16 @@ public static class FilePath
     /// <returns>Regular expression pattern that simulates wild-card matching for filenames.</returns>
     public static string GetFilePatternRegularExpression(string fileSpec)
     {
-        List<Tuple<string, string>> replacements = new()
-        {
-            // Replaces directory separator characters with their equivalent regular expressions.
+        List<Tuple<string, string>> replacements =
+        [
             Tuple.Create($"{s_directorySeparatorCharPattern}+", $"{s_directorySeparatorCharPattern}+"),
-                
+
             // Replaces wild-card file patterns with their equivalent regular expression.
             Tuple.Create(Regex.Escape("?"), s_fileNameCharPattern),
-            Tuple.Create(Regex.Escape("**") + s_directorySeparatorCharPattern, $"({s_fileNameCharPattern}*{s_directorySeparatorCharPattern})*"),
+            Tuple.Create(Regex.Escape("**") + s_directorySeparatorCharPattern,
+                $"({s_fileNameCharPattern}*{s_directorySeparatorCharPattern})*"),
             Tuple.Create(Regex.Escape("*"), $"{s_fileNameCharPattern}*")
-        };
+        ];
 
         StringBuilder input = new(fileSpec);
         StringBuilder output = new();
@@ -1103,7 +1105,7 @@ public static class FilePath
             throw new ArgumentNullException(nameof(filePath));
 
         int index;
-        char[] dirVolChars = { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, Path.VolumeSeparatorChar };
+        char[] dirVolChars = [Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar, Path.VolumeSeparatorChar];
 
         // Remove file name and trailing directory separator character from the file path.
         filePath = RemovePathSuffix(GetDirectoryName(filePath));
